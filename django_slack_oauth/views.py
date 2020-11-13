@@ -47,16 +47,19 @@ class SlackAuthView(RedirectView):
 
     def get(self, request, *args, **kwargs):
         code = request.GET.get('code')
+        data = request.GET.get('data')
+        redirect_uri = request.GET.get('redirect_uri')
         if not code:
-            return self.auth_request()
+            return self.auth_request(data)
 
-        self.validate_state(request.GET.get('state'))
+        data = self.validate_state(request.GET.get('state'))
 
         access_content = self.oauth_access(code)
         if not access_content.status_code == 200:
             return self.error_message()
 
         api_data = access_content.json()
+        api_data['data'] = data
         if not api_data['ok']:
             return self.error_message(api_data['error'])
 
@@ -64,19 +67,21 @@ class SlackAuthView(RedirectView):
 
         # pipelines is a list of the callables to be executed
         pipelines = [getattr(import_module('.'.join(p.split('.')[:-1])), p.split('.')[-1]) for p in pipelines]
-        return self.execute_pipelines(request, api_data, pipelines)
+        return self.execute_pipelines(request, api_data, pipelines, redirect_uri)
 
-    def execute_pipelines(self, request, api_data, pipelines):
+    def execute_pipelines(self, request, api_data, pipelines, redirect_uri):
         if len(pipelines) == 0:
             # Terminate at the successful redirect
+            if redirect_uri:
+                return self.response(redirect=redirect_uri)
             return self.response()
         else:
             # Call the next function in the queue
             request, api_data = pipelines.pop(0)(request, api_data)
-            return self.execute_pipelines(request, api_data, pipelines)
+            return self.execute_pipelines(request, api_data, pipelines, redirect_uri)
 
-    def auth_request(self):
-        state = self.store_state()
+    def auth_request(self, data):
+        state = self.store_state(data)
 
         params = urlencode({
             'client_id': settings.SLACK_CLIENT_ID,
@@ -102,10 +107,13 @@ class SlackAuthView(RedirectView):
         if state_before != state:
             raise StateMismatch('State mismatch upon authorization completion.'
                                 ' Try new request.')
-        return True
+        data = state.split(':')
+        return data[1] if len(data) > 0 else None
 
-    def store_state(self):
+    def store_state(self, data):
         state = str(uuid.uuid4())[:6]
+        if data:
+            state += ':' + data
         self.request.session['state'] = state
         return state
 
