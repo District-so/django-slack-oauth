@@ -104,8 +104,6 @@ class SlackAuthView(RedirectView):
         return requests.get(settings.SLACK_OAUTH_ACCESS_URL, params=params)
 
     def validate_state(self, state):
-        print('self.request.session', self.request.session.keys())
-        print('self.request.session', self.request.session.items())
         state_before = self.request.session.pop('state')
         if state_before != state:
             raise StateMismatch('State mismatch upon authorization completion.'
