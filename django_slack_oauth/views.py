@@ -104,14 +104,14 @@ class SlackAuthView(RedirectView):
         return requests.get(settings.SLACK_OAUTH_ACCESS_URL, params=params)
 
     def validate_state(self, state):
+        print('self.request.session', self.request.session.keys())
+        print('self.request.session', self.request.session.items())
         state_before = self.request.session.pop('state')
         if state_before != state:
             raise StateMismatch('State mismatch upon authorization completion.'
                                 ' Try new request.')
         data = state.split(':')
         redirect_uri = None
-        print('self.request.session', self.request.session.keys())
-        print('self.request.session', self.request.session.items())
         if 'redirect_uri' in self.request.session:
             redirect_uri = self.request.session.pop('redirect_uri')
         return data[1] if len(data) > 1 else None, redirect_uri
@@ -124,7 +124,7 @@ class SlackAuthView(RedirectView):
         return state
 
     def store_redirect_uri(self, redirect_uri):
-        if not redirect_uri:
+        if redirect_uri:
             self.request.session['redirect_uri'] = redirect_uri
         return redirect_uri
 
