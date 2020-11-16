@@ -50,9 +50,9 @@ class SlackAuthView(RedirectView):
         data = request.GET.get('data')
         redirect_uri = request.GET.get('redirect_uri')
         if not code:
-            return self.auth_request(data)
+            return self.auth_request(data, redirect_uri)
 
-        data = self.validate_state(request.GET.get('state'))
+        data, redirect_uri = self.validate_state(request.GET.get('state'))
 
         access_content = self.oauth_access(code)
         if not access_content.status_code == 200:
@@ -80,8 +80,9 @@ class SlackAuthView(RedirectView):
             request, api_data = pipelines.pop(0)(request, api_data)
             return self.execute_pipelines(request, api_data, pipelines, redirect_uri)
 
-    def auth_request(self, data):
+    def auth_request(self, data, redirect_uri):
         state = self.store_state(data)
+        self.store_redirect_uri(redirect_uri)
 
         params = urlencode({
             'client_id': settings.SLACK_CLIENT_ID,
@@ -108,7 +109,8 @@ class SlackAuthView(RedirectView):
             raise StateMismatch('State mismatch upon authorization completion.'
                                 ' Try new request.')
         data = state.split(':')
-        return data[1] if len(data) > 0 else None
+        redirect_uri = self.request.session.pop('redirect_uri')
+        return data[1] if len(data) > 1 else None, redirect_uri
 
     def store_state(self, data):
         state = str(uuid.uuid4())[:6]
@@ -116,6 +118,11 @@ class SlackAuthView(RedirectView):
             state += ':' + data
         self.request.session['state'] = state
         return state
+
+    def store_redirect_uri(self, redirect_uri):
+        if not redirect_uri:
+            self.request.session['redirect_uri'] = redirect_uri
+        return redirect_uri
 
     def error_message(self, msg=text_error):
         messages.add_message(self.request, messages.ERROR, '%s' % msg)
