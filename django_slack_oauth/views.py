@@ -110,7 +110,8 @@ class SlackAuthView(RedirectView):
                                 ' Try new request.')
         data = state.split(':')
         redirect_uri = None
-        print('self.request.session', self.request.session)
+        print('self.request.session', self.request.session.keys())
+        print('self.request.session', self.request.session.items())
         if 'redirect_uri' in self.request.session:
             redirect_uri = self.request.session.pop('redirect_uri')
         return data[1] if len(data) > 1 else None, redirect_uri
