@@ -109,7 +109,10 @@ class SlackAuthView(RedirectView):
             raise StateMismatch('State mismatch upon authorization completion.'
                                 ' Try new request.')
         data = state.split(':')
-        redirect_uri = self.request.session.pop('redirect_uri')
+        redirect_uri = None
+        print('self.request.session', self.request.session)
+        if 'redirect_uri' in self.request.session:
+            redirect_uri = self.request.session.pop('redirect_uri')
         return data[1] if len(data) > 1 else None, redirect_uri
 
     def store_state(self, data):
