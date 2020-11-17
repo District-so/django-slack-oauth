@@ -75,11 +75,10 @@ class SlackAuthView(RedirectView):
             if redirect_uri:
                 if 'request_params' in api_data:
                     url = urlparse(redirect_uri)
-                    params_dict = parse_qsl(url.query)
+                    params_dict = dict(parse_qsl(url.query))
                     params_dict.update(api_data['request_params'])
                     parsed_url = urlparse._replace(query=urlencode(params_dict))
                     redirect_uri = urlunparse(parsed_url)
-                    print('redirect_uri', redirect_uri)
                 return self.response(redirect=redirect_uri)
             return self.response()
         else:
